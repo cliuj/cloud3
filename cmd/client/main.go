@@ -9,6 +9,7 @@ import (
 
 var (
 	CLIENT_PORT = os.Getenv("CLIENT_PORT")
+	SHARED_DIR = os.Getenv("SHARED_DIR")
 )
 
 func main() {
@@ -16,6 +17,10 @@ func main() {
 
 	if CLIENT_PORT == "" {
 		CLIENT_PORT = "8080"
+	}
+
+	if SHARED_DIR == "" {
+		SHARED_DIR = "/tmp/cloud3"
 	}
 
 	r := gin.Default()
