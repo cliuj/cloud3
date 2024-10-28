@@ -52,8 +52,6 @@ func GetFileSHASUM(filePath string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	//log.Println("h:", h)
-
 	return h.Sum(nil), nil
 }
 
@@ -74,6 +72,5 @@ func GetDirSHASUM(sourceDir string) (string, error) {
 	}
 
 	dirChecksum := hex.EncodeToString(checksum.Sum(nil))
-	log.Println("dirChecksum:", dirChecksum)
 	return dirChecksum, nil
 }

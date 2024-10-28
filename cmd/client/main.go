@@ -53,9 +53,6 @@ func PollDirChanges(sourceDir string) {
 		// Get Remote checksum
 		requestURL := SERVER_URL + "/checksum"
 		serverChecksum, err := GetServerChecksum(requestURL)
-		fmt.Println(serverChecksum)
-
-		log.Println("client:", clientDirChecksum, "server:", serverChecksum)
 
 		// If both checksums do not match, then upload local to remote
 		if clientDirChecksum != serverChecksum {
@@ -89,7 +86,6 @@ func GetServerChecksum(url string) (string, error) {
 }
 
 func RegisterClient(url string) error {
-	fmt.Println("register", url)
 	jsonPayload, err := json.Marshal(
 		client.RegisterClientPayload{
 		ID: CLIENT_ID,
@@ -111,7 +107,6 @@ func RegisterClient(url string) error {
 
 
 func main() {
-	fmt.Println("Hello world")
 	setDefaultEnvs()
 	//RegisterClient(SERVER_URL + "/client/register")
 	r := gin.Default()
@@ -123,20 +118,17 @@ func main() {
 
 	go PollDirChanges(SHARED_DIR)
 
-
 	r.POST("/files/upload", func(c *gin.Context) {
 		form, _ := c.MultipartForm()
 		files := form.File["upload[]"]
 
 		for _, file := range files {
 			log.Println(file.Filename)
-
 			dst := path.Join(SHARED_DIR, file.Filename)
 			c.SaveUploadedFile(file, dst)
 		}
 		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded!", len(files)))
 	})
-
 
 	r.Run(":" + CLIENT_PORT)
 }

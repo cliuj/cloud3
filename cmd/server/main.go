@@ -14,6 +14,8 @@ import (
 var (
 	SERVER_PORT = os.Getenv("SERVER_PORT")
 	SHARED_DIR = os.Getenv("SHARED_DIR")
+
+	// Hardcoded client list
 	clientList = map[string]string{
 		"1": "http://localhost:8080",
 		"2": "http://localhost:8081",
@@ -79,7 +81,8 @@ func main() {
 		origin := c.Request.Host
 
 		for _, host := range clientList {
-			fmt.Println("trying to send to client: ", origin, host)
+			fmt.Println(fmt.Sprintf("Attempting to upload to client: %s", host))
+
 			if origin == host {
 				// Skip the origin
 				continue
