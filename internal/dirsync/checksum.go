@@ -10,6 +10,11 @@ import (
 	"encoding/hex"
 )
 
+type ChecksumPayload struct {
+	Checksum string `json:"message"`
+}
+
+
 // GetFilePathsFromDir gets the filepaths from a passed directory. The filepath
 // is the concatenation of `sourceDir` and the file name.
 // NOTE: It will skip processing on directories

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 
@@ -72,18 +73,50 @@ func setDefaultEnvs() {
 
 func PollDirChanges(sourceDir string) {
 	for {
-		checksum, err := dirsync.GetDirSHASUM(sourceDir)
+		// Get local checksum
+		clientDirChecksum, err := dirsync.GetDirSHASUM(sourceDir)
 		if err != nil {
 			// TODO: Need to handle this later
 			log.Println(fmt.Errorf("Error while retrieving checksum of dir %s, %v", sourceDir, err))
 		}
-		fmt.Println(checksum)
+		fmt.Println(clientDirChecksum)
 
-		// if checksum diff:
-		// upload to server
+		// Get Remote checksum
+		requestURL := SERVER_URL + "/checksum"
+		serverChecksum, err := GetServerChecksum(requestURL)
+		fmt.Println(serverChecksum)
 
+		log.Println("client:", clientDirChecksum, "server:", serverChecksum)
+
+		// If both checksums do not match, then upload local to remote
+		if clientDirChecksum != serverChecksum {
+			filePaths, err := dirsync.GetFilePathsFromDir(SHARED_DIR)
+			if err != nil {
+				log.Fatalf("Failed to retrieve filepaths from directory: %s, %v", SHARED_DIR, err)
+			}
+			uploadURL := SERVER_URL + "/files/upload"
+			err = UploadFiles(uploadURL, filePaths)
+			if err != nil {
+				log.Fatalf("Failed to UploadFiles to URL: %s with files %v, %v", uploadURL, filePaths, err)
+			}
+		}
 		time.Sleep(time.Second)
 	}
+}
+
+func GetServerChecksum(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != 200 {
+		// TODO: log message
+		return "", fmt.Errorf("Server checksum returned Non-200 code: %v", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	data := dirsync.ChecksumPayload{}
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	return data.Checksum, nil
 }
 
 func main() {
@@ -96,20 +129,7 @@ func main() {
 		})
 	})
 
-
-	//go GetDirSHASUM(SHARED_DIR)
 	go PollDirChanges(SHARED_DIR)
-
-
-	filePaths, err := dirsync.GetFilePathsFromDir(SHARED_DIR)
-	if err != nil {
-		log.Fatalf("Failed to retrieve filepaths from directory: %s, %v", SHARED_DIR, err)
-	}
-	uploadURL := SERVER_URL + "/files/upload"
-	err = UploadFiles(uploadURL, filePaths)
-	if err != nil {
-		log.Fatalf("Failed to UploadFiles to URL: %s with files %v, %v", uploadURL, filePaths, err)
-	}
 
 	r.Run(":" + CLIENT_PORT)
 }

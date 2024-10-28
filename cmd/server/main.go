@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"log"
-	"path"
 	"net/http"
+	"os"
+	"path"
+
+	"github.com/cliuj/cloud3/internal/dirsync"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,13 +18,17 @@ var (
 
 func loadENVs() {
 	if SERVER_PORT == "" {
-		SERVER_PORT = "8080"
+		SERVER_PORT = "8000"
 	}
 
 	if SHARED_DIR == "" {
-		SHARED_DIR = "/tmp/cloud3/client"
+		SHARED_DIR = "/tmp/cloud3/server"
 	}
 
+}
+
+func getChecksum(sourceDir string) {
+	
 }
 
 func main() {
@@ -33,6 +39,20 @@ func main() {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
+		})
+	})
+
+	r.GET("/checksum", func(c *gin.Context) {
+		checksum, err := dirsync.GetDirSHASUM(SHARED_DIR)
+		if err != nil {
+			log.Println("Failed to get checksum", err)
+			c.JSON(500, gin.H{
+				"message": "failed to get checksum",
+			})
+			return
+		}
+		c.JSON(200, gin.H{
+			"message": checksum,
 		})
 	})
 	
