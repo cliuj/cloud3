@@ -41,6 +41,10 @@ func setDefaultEnvs() {
 	}
 }
 
+// PollDirChanges retrieves the checksum for both the locally passed directory
+// as well as the remote server's checksum, compares the 2 checksums and attempts to
+// upload the local state of the directory to the remote server.
+//
 func PollDirChanges(sourceDir string) {
 	for {
 		// Get local checksum
@@ -70,6 +74,9 @@ func PollDirChanges(sourceDir string) {
 	}
 }
 
+// GetServerChecksum is wrapper function to make a simple HTTP request call
+// to get the remote server's checksum.
+//
 func GetServerChecksum(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -85,6 +92,9 @@ func GetServerChecksum(url string) (string, error) {
 	return data.Checksum, nil
 }
 
+// RegisterClient is a wrapper function to make a simple HTTP request call to the
+// remote server so that the server can note down which clients it needs to connect
+// and run upload on.
 func RegisterClient(url string) error {
 	jsonPayload, err := json.Marshal(
 		client.RegisterClientPayload{

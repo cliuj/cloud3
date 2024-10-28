@@ -37,6 +37,7 @@ func GetFilePathsFromDir(sourceDir string) ([]string, error) {
 	return fps, nil
 }
 
+// GetFileSHASUM retrieves the SHA256SUM of the passed filepath
 func GetFileSHASUM(filePath string) ([]byte, error) {
 
 	f, err := os.Open(filePath)
@@ -55,6 +56,10 @@ func GetFileSHASUM(filePath string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
+// GetDirSHASUM retrieves the SHA256SUM of all the 'FILES' of a given directory.
+// (this means directories are skipped). It is a merkel tree in that the final
+// SHASUM is the SHASUM of all the files together. Thus a single change will
+// change the entire SHASUM of the directory.
 func GetDirSHASUM(sourceDir string) (string, error) {
 	filePaths, err := GetFilePathsFromDir(sourceDir)
 	if err != nil {
