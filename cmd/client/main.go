@@ -1,61 +1,27 @@
 package main
 
 import (
-	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
+	"path"
 	"time"
-	"encoding/json"
+	"bytes"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/cliuj/cloud3/internal/client"
 	"github.com/cliuj/cloud3/internal/dirsync"
 )
 
 var (
 	CLIENT_PORT = os.Getenv("CLIENT_PORT")
+	CLIENT_ID = os.Getenv("CLIENT_ID")
 	SERVER_URL = os.Getenv("SERVER_URL")
 	SHARED_DIR = os.Getenv("SHARED_DIR")
 )
-
-// UploadFiles attempts to upload the files specified in filePaths via a POST request
-//
-func UploadFiles(destURL string, filePaths []string) error {
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	for _, filePath := range filePaths {
-		f, err := os.Open(filePath)
-		if err != nil {
-			log.Println(fmt.Sprintf("Failed to open file: %s", filePath))
-			return err
-		}
-		defer f.Close()
-
-		part, err := writer.CreateFormFile("upload[]", filePath)
-		if err != nil {
-			log.Println(fmt.Sprintf("Failed to CreateFormFile for: %s", filePath))
-			return err
-		}
-		_, err = io.Copy(part, f)
-		if err != nil {
-			log.Println(fmt.Sprintf("Failed to copy file: %s", filePath))
-			return err
-		}
-
-	}
-	writer.Close()
-	resp, err := http.Post(destURL, writer.FormDataContentType(), body)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-
-}
 
 func setDefaultEnvs() {
 	if CLIENT_PORT == "" {
@@ -69,6 +35,10 @@ func setDefaultEnvs() {
 	if SERVER_URL == "" {
 		SERVER_URL = "http://localhost:8000"
 	}
+
+	if CLIENT_ID == "" {
+		log.Fatalf("CLIENT_ID needs to be set!")
+	}
 }
 
 func PollDirChanges(sourceDir string) {
@@ -79,7 +49,6 @@ func PollDirChanges(sourceDir string) {
 			// TODO: Need to handle this later
 			log.Println(fmt.Errorf("Error while retrieving checksum of dir %s, %v", sourceDir, err))
 		}
-		fmt.Println(clientDirChecksum)
 
 		// Get Remote checksum
 		requestURL := SERVER_URL + "/checksum"
@@ -95,7 +64,7 @@ func PollDirChanges(sourceDir string) {
 				log.Fatalf("Failed to retrieve filepaths from directory: %s, %v", SHARED_DIR, err)
 			}
 			uploadURL := SERVER_URL + "/files/upload"
-			err = UploadFiles(uploadURL, filePaths)
+			err = dirsync.UploadFiles(uploadURL, filePaths)
 			if err != nil {
 				log.Fatalf("Failed to UploadFiles to URL: %s with files %v, %v", uploadURL, filePaths, err)
 			}
@@ -119,9 +88,32 @@ func GetServerChecksum(url string) (string, error) {
 	return data.Checksum, nil
 }
 
+func RegisterClient(url string) error {
+	fmt.Println("register", url)
+	jsonPayload, err := json.Marshal(
+		client.RegisterClientPayload{
+		ID: CLIENT_ID,
+	})
+	if err != nil {
+		log.Println("Error unmarshalling JSON", err)
+		return err
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		log.Println("Error registering client", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+
+
 func main() {
 	fmt.Println("Hello world")
 	setDefaultEnvs()
+	//RegisterClient(SERVER_URL + "/client/register")
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -130,6 +122,21 @@ func main() {
 	})
 
 	go PollDirChanges(SHARED_DIR)
+
+
+	r.POST("/files/upload", func(c *gin.Context) {
+		form, _ := c.MultipartForm()
+		files := form.File["upload[]"]
+
+		for _, file := range files {
+			log.Println(file.Filename)
+
+			dst := path.Join(SHARED_DIR, file.Filename)
+			c.SaveUploadedFile(file, dst)
+		}
+		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded!", len(files)))
+	})
+
 
 	r.Run(":" + CLIENT_PORT)
 }

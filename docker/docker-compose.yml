@@ -10,6 +10,7 @@ services:
     network_mode: host
     environment:
       CLIENT_PORT: "8080"
+      CLIENT_ID: "1"
     build:
       context: ../
       dockerfile: ./docker/client.Dockerfile
@@ -17,6 +18,7 @@ services:
     network_mode: host
     environment:
       CLIENT_PORT: "8081"
+      CLIENT_ID: "2"
     build:
       context: ../
       dockerfile: ./docker/client.Dockerfile
