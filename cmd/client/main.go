@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
@@ -10,7 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"encoding/hex"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -133,6 +134,22 @@ func GetDirSHASUM(sourceDir string) (string, error) {
 	return dirChecksum, nil
 }
 
+func PollDirChanges(sourceDir string) {
+	for {
+		checksum, err := GetDirSHASUM(sourceDir)
+		if err != nil {
+			// TODO: Need to handle this later
+			log.Println(fmt.Errorf("Error while retrieving checksum of dir %s, %v", sourceDir, err))
+		}
+		fmt.Println(checksum)
+
+		// if checksum diff:
+		// upload to server
+
+		time.Sleep(time.Second)
+	}
+}
+
 func main() {
 	fmt.Println("Hello world")
 	setDefaultEnvs()
@@ -144,7 +161,8 @@ func main() {
 	})
 
 
-	go GetDirSHASUM(SHARED_DIR)
+	//go GetDirSHASUM(SHARED_DIR)
+	go PollDirChanges(SHARED_DIR)
 
 
 	filePaths, err := GetFilePathsFromDir(SHARED_DIR)
