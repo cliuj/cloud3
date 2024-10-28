@@ -1,14 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"log"
-	"path"
-	"net/http"
-	"io"
 	"bytes"
+	"crypto/sha256"
+	"fmt"
+	"io"
+	"log"
 	"mime/multipart"
+	"net/http"
+	"os"
+	"path"
+	"encoding/hex"
 
 	"github.com/gin-gonic/gin"
 )
@@ -90,6 +92,47 @@ func setDefaultEnvs() {
 	}
 }
 
+func GetFileSHASUM(filePath string) ([]byte, error) {
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	defer f.Close()
+	h := sha256.New()
+
+	_, err = io.Copy(h, f)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	//log.Println("h:", h)
+
+	return h.Sum(nil), nil
+}
+
+func GetDirSHASUM(sourceDir string) (string, error) {
+	filePaths, err := GetFilePathsFromDir(sourceDir)
+	if err != nil {
+		return "", err
+	}
+	
+	checksum := sha256.New()
+
+	for _, filePath := range filePaths {
+		sum, err := GetFileSHASUM(filePath)
+		if err != nil {
+			return "", err
+		}
+		checksum.Write(sum)
+	}
+
+	dirChecksum := hex.EncodeToString(checksum.Sum(nil))
+	log.Println("dirChecksum:", dirChecksum)
+	return dirChecksum, nil
+}
+
 func main() {
 	fmt.Println("Hello world")
 	setDefaultEnvs()
@@ -99,6 +142,10 @@ func main() {
 			"message": "pong",
 		})
 	})
+
+
+	go GetDirSHASUM(SHARED_DIR)
+
 
 	filePaths, err := GetFilePathsFromDir(SHARED_DIR)
 	if err != nil {
